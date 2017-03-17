@@ -28,5 +28,6 @@ mkbootimg \
     --os_version 0.0.0 \
     --os_patch_level 0 \
     --second_offset 0x00f00000 \
+    --hash sha256 \
     --id \
     -o ${OUT}
