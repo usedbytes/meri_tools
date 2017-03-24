@@ -32,14 +32,35 @@
 #include <stdint.h>
 #include <fcntl.h>
 
+int dump_dtb(const void *p, size_t len, const char *filename)
+{
+	int ret = 0, fd;
+
+	printf("Writing %s\n", filename);
+
+	fd = open(filename, O_CREAT | O_RDWR, 0644);
+	if (fd < 0) {
+		fprintf(stderr, "open error. %s\n", strerror(errno));
+		return -1;
+	}
+
+	if (write(fd, p, len) != len) {
+		fprintf(stderr, "write error. %s\n", strerror(errno));
+		ret = -1;
+	}
+
+	close(fd);
+
+	return ret;
+}
+
 int main(int argc, char *argv[])
 {
 	int fd, ret, i = 0;
 	char filename[128];
 	uint8_t *p;
 	struct stat s;
-	size_t len;
-	off_t off = 0;
+	off_t off = 0, start_off = 0;
 	uint8_t magic[] = { 0xd0, 0x0d, 0xfe, 0xed };
 
 	if (argc != 2) {
@@ -54,7 +75,6 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "stat error. %s\n", strerror(errno));
 		return 1;
 	}
-	len = s.st_size;
 
 	fd = open(argv[1], O_RDONLY);
 	if (fd < 0) {
@@ -62,43 +82,30 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	p = mmap(NULL, len, PROT_READ, MAP_PRIVATE, fd, 0);
+	p = mmap(NULL, s.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
 	if (p == MAP_FAILED) {
 		fprintf(stderr, "mmap error. %s\n", strerror(errno));
 		ret = 1;
 		goto done;
 	}
 
-	while (off < len) {
-		if ((p[0] == magic[0]) &&
-		    (p[1] == magic[1]) &&
-		    (p[2] == magic[2]) &&
-		    (p[3] == magic[3])) {
-			int fd2;
+	off += sizeof(magic);
+	while (off < s.st_size) {
+		if (!memcmp(p + off, magic, sizeof(magic))) {
 			snprintf(filename, 128, "%s.%d", argv[1], i++);
-			printf("Writing %s\n", filename);
-
-			fd2 = open(filename, O_CREAT | O_RDWR);
-			if (fd2 < 0) {
-				fprintf(stderr, "open error. %s\n", strerror(errno));
-				ret = 1;
+			if (dump_dtb(p + start_off, off - start_off, filename))
 				goto done;
-			}
-
-			if (write(fd2, p, len - off) != len - off) {
-				fprintf(stderr, "write error. %s\n", strerror(errno));
-				ret = 1;
-				close(fd2);
-				goto done;
-			}
-
-			close(fd2);
+			start_off = off;
 		}
 		off++;
-		p++;
 	}
 
+	snprintf(filename, 128, "%s.%d", argv[1], i++);
+	dump_dtb(p + start_off, off - start_off, filename);
+
 done:
+	if (p && p != MAP_FAILED)
+		munmap(p, s.st_size);
 	close(fd);
 	return ret;
 }
