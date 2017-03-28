@@ -117,6 +117,16 @@ sudo cp ${SUPERSU_DIR}/arm64/libsupol.so mnt/lib/libsupol.so
 sudo chown root:root mnt/lib/libsupol.so
 sudo chmod 0644 mnt/lib/libsupol.so
 
+# Run a script at first-boot to fix up the SELinux contexts on the image
+# It will remove itself after running
+sudo bash -c "cat > mnt/su.d/firstboot.rc" <<EOF
+#/system/bin/sh
+chcon -hR u:object_r:system_data_file:s0 /su /data/local/tmp/su.img
+rm /su/su.d/firstboot.rc
+sync
+EOF
+sudo chmod 0750 mnt/su.d/firstboot.rc
+
 sync
 sudo umount mnt
 
@@ -163,6 +173,7 @@ sudo chown root:root ramdir/init.supersu.rc
 
 # 12. Patch the initscript for our img location and set the su.img context
 sudo sed -i 's;/data/su.img;/data/local/tmp/su.img;' ramdir/init.supersu.rc
+sudo sed -i '\;on property:sukernel.mount=1;a\ \ \ \ restorecon /data/local/tmp/su.img' ramdir/init.supersu.rc
 sudo bash -c "echo /data/local/tmp/su.img u:object_r:system_data_file:s0 >> ramdir/file_contexts"
 
 # Optional: Preserve dm-verity on /system, encryption on /data
@@ -201,13 +212,5 @@ mkbootimg/mkbootimg \
 # 15. Boot it! (flash it if you want to make it persistent)
 adb reboot-bootloader
 fastboot boot boot.supersu.img
-
-# 16. We need to chcon the su.img files on the first boot. Luckily we can use
-#     the 'su' we installed into /data/local/tmp earlier
 echo "Waiting for device..."
 adb wait-for-usb-device
-sleep 5
-adb shell "
-/data/local/tmp/su -c 'chcon -R u:object_r:system_data_file:s0 /su /data/local/tmp/su.img && sync'
-"
-
