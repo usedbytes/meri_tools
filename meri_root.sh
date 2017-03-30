@@ -161,7 +161,9 @@ adb pull /data/local/tmp/ramdisk.patched .
 
 # 10. Extract the patched ramdisk, and install the patched sepolicy into it
 mkdir ramdir
-cat ramdisk.patched | sudo cpio --no-absolute-filenames -D ramdir -i
+cd ramdir
+cat ../ramdisk.patched | sudo cpio --no-absolute-filenames -i
+cd ..
 sudo cp sepolicy.patched ramdir/sepolicy
 sudo chown root:root ramdir/sepolicy
 sudo chmod 0644 ramdir/sepolicy
@@ -186,7 +188,9 @@ if [ ! -z "$PRESERVE_VERITY" ] && [ $PRESERVE_VERITY -ne 0 ]
 then
 	echo "Preserving dm-verity"
 	mkdir ramdir-stock
-	cat ramdisk | sudo cpio --no-absolute-filenames -D ramdir-stock -i
+	cd ramdir-stock
+	cat ../ramdisk | sudo cpio --no-absolute-filenames -i
+	cd ..
 	sudo cp ramdir-stock/{fstab.song,verity_key} ramdir/
 	sudo rm -rf ramdir-stock
 fi
