@@ -89,7 +89,11 @@ cd ..
 # 2. Copy the SuperSU binaries to the device
 echo "Waiting for device..."
 adb wait-for-usb-device
-adb push ${SUPERSU_DIR}/arm64/*su* /data/local/tmp/ || exit 1
+adb push ${SUPERSU_DIR}/arm64/su /data/local/tmp/ || exit 1
+adb push ${SUPERSU_DIR}/arm64/suinit /data/local/tmp/ || exit 1
+adb push ${SUPERSU_DIR}/arm64/sukernel /data/local/tmp/ || exit 1
+adb push ${SUPERSU_DIR}/arm64/supolicy /data/local/tmp/ || exit 1
+adb push ${SUPERSU_DIR}/arm64/libsupol.so /data/local/tmp/ || exit 1
 adb shell chmod +x /data/local/tmp/su*
 
 # 3. Create the SuperSU systemless root image
@@ -152,7 +156,8 @@ LD_LIBRARY_PATH=. ./sukernel --patch ./ramdisk ramdisk.patched
 "
 
 # 9. Pull back the patched files
-adb pull /data/local/tmp/sepolicy.patched /data/local/tmp/ramdisk.patched .
+adb pull /data/local/tmp/sepolicy.patched .
+adb pull /data/local/tmp/ramdisk.patched .
 
 # 10. Extract the patched ramdisk, and install the patched sepolicy into it
 mkdir ramdir
